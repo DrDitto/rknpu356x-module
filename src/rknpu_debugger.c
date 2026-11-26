@@ -1,9 +1,11 @@
-// SPDX-License-Identifier: GPL-2.0
+/* SPDX-License-Identifier: GPL-2.0-or-later */
 /*
+ * File: rknpu_debugger.c
  * Copyright (C) Rockchip Electronics Co., Ltd.
  * Author: Felix Zeng <felix.zeng@rock-chips.com>
+ * Modified by: DrDitto with Google AI assitance
  *
- * Target: RK3566/RK3568 | Linux Kernel >= 7.2.0
+ * Target: RK3566 / RK3568 (Single-Core NPU) | DRM GEM + IOMMU | Kernel >= 7.3.0
  */
 
 #include <linux/slab.h>

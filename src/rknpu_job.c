@@ -1,10 +1,11 @@
-// SPDX-License-Identifier: GPL-2.0
+/* SPDX-License-Identifier: GPL-2.0-or-later */
 /*
+ * File: rknpu_job.c
  * Copyright (C) Rockchip Electronics Co., Ltd.
  * Author: Felix Zeng <felix.zeng@rock-chips.com>
+ * Modified by: DrDitto with Google AI assitance
  *
- * Repository: DittoSystems (Native-Only Build)
- * Target Environment: RK3566 / RK3568 (DRM Render Node + IOMMU)
+ * Target: RK3566 / RK3568 (Single-Core NPU) | DRM GEM + IOMMU | Kernel >= 7.3.0
  */
 
 #include <linux/slab.h>

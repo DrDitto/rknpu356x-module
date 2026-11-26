@@ -1,7 +1,11 @@
-// SPDX-License-Identifier: (GPL-2.0+ OR MIT)
+/* SPDX-License-Identifier: GPL-2.0-or-later */
 /*
- * Copyright (c) 2020 Rockchip Electronics Co., Ltd.
- * Target: RK3566/RK3568 | DRM Render Node + IOMMU | Linux Kernel >= 7.2.0
+ * File: rknpu_drv.c
+ * Copyright (C) Rockchip Electronics Co., Ltd.
+ * Author: Felix Zeng <felix.zeng@rock-chips.com>
+ * Modified by: DrDitto with Google AI assitance
+ *
+ * Target: RK3566 / RK3568 (Single-Core NPU) | DRM GEM + IOMMU | Kernel >= 7.3.0
  */
 
 #include <linux/module.h>

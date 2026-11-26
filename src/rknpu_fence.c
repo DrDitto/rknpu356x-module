@@ -1,13 +1,11 @@
-// SPDX-License-Identifier: GPL-2.0
+/* SPDX-License-Identifier: GPL-2.0-or-later */
 /*
+ * File: rknpu_fence.c
  * Copyright (C) Rockchip Electronics Co., Ltd.
  * Author: Felix Zeng <felix.zeng@rock-chips.com>
- * 
- * Repository: DittoSystems (Native-Only Build)(DrDitto and MasterChief=>Tailor AI Assistant)
- * Target Environment: Generic/Mainline Linux Kernel 7.2.9 (RK3566 SoC)
- * Architecture Notes: Native execution relying on CMA/DMA (Non-IOMMU / BSP-decoupled)
- * Description: Refactored RKNPU driver stripped of proprietary BSP dependencies,
- *              optimized for production-ready bare hardware integration.
+ * Modified by: DrDitto with Google AI assitance
+ *
+ * Target: RK3566 / RK3568 (Single-Core NPU) | DRM GEM + IOMMU | Kernel >= 7.3.0
  */
 
 #include <linux/slab.h>
