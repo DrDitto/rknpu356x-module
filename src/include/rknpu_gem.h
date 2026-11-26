@@ -1,9 +1,10 @@
-/* SPDX-License-Identifier: GPL-2.0 */
+/* SPDX-License-Identifier: GPL-2.0-or-later */
 /*
- * Copyright (C) Rockchip Electronics Co., Ltd.
- * Author: Felix Zeng <felix.zeng@rock-chips.com>
- *
- * Target: RK3566/RK3568 | DRM GEM + IOMMU | Linux Kernel >= 7.2.0
+- Copyright (C) Rockchip Electronics Co., Ltd.
+- Author: Felix Zeng <felix.zeng@rock-chips.com>
+- Modified by: DrDitto with Google AI assitance
+  *
+- Target: RK3566 / RK3568 (Single-Core NPU) | DRM GEM + IOMMU | Kernel >= 7.3.0
  */
 
 #ifndef __LINUX_RKNPU_GEM_H
@@ -16,8 +17,8 @@
 #include <drm/drm_gem.h>
 #include <drm/drm_mode.h>
 
-#if LINUX_VERSION_CODE < KERNEL_VERSION(7, 2, 0)
-#error "This driver requires Linux Kernel 7.2.0 or newer"
+#if LINUX_VERSION_CODE < KERNEL_VERSION(7, 3, 0)
+#error "This driver requires Linux Kernel 7.3.0 or newer"
 #endif
 
 #define to_rknpu_obj(x) container_of(x, struct rknpu_gem_object, base)
@@ -92,7 +93,7 @@ rknpu_gem_prime_import_sg_table(struct drm_device *dev,
 				struct sg_table *sgt);
 int rknpu_gem_prime_vmap(struct drm_gem_object *obj, struct iosys_map *map);
 void rknpu_gem_prime_vunmap(struct drm_gem_object *obj, struct iosys_map *map);
-int rknpu_gem_prime_mmap(struct drm_gem_object *obj,
+int rknpu_gem_prime_mmap(struct drm_object *obj,
 			 struct vm_area_struct *vma);
 
 static inline void *rknpu_gem_alloc_page(size_t nr_pages)

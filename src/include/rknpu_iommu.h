@@ -1,29 +1,56 @@
-/* SPDX-License-Identifier: GPL-2.0 */
+/* SPDX-License-Identifier: GPL-2.0-or-later */
 /*
- * Copyright (C) Rockchip Electronics Co., Ltd.
- * Author: Felix Zeng <felix.zeng@rock-chips.com>
- *
- * Target: RK3566/RK3568 | Linux Kernel >= 7.2.0
+- Copyright (C) Rockchip Electronics Co., Ltd.
+- Author: Felix Zeng <felix.zeng@rock-chips.com>
+- Modified by: DrDitto with Google AI assitance
+  *
+- Target: RK3566 / RK3568 (Single-Core NPU) | DRM GEM + IOMMU | Kernel >= 7.3.0
  */
 
 #ifndef __LINUX_RKNPU_IOMMU_H
 #define __LINUX_RKNPU_IOMMU_H
 
+#include <linux/version.h>
+#include <linux/types.h>
 #include <linux/mutex.h>
 #include <linux/seq_file.h>
 #include <linux/iommu.h>
 #include <linux/iova.h>
-#include <linux/version.h>
+#include <linux/dma-direction.h>
 
-#if LINUX_VERSION_CODE < KERNEL_VERSION(7, 2, 0)
-#error "This driver requires Linux Kernel 7.2.0 or newer"
+#if LINUX_VERSION_CODE < KERNEL_VERSION(7, 3, 0)
+#error "rknpu356x-module requires Linux kernel 7.3.0 or newer"
 #endif
 
-#include "rknpu_drv.h"
+struct device;
+struct scatterlist;
+struct rknpu_device;
 
 struct rknpu_iommu_dma_cookie {
 	struct iova_domain iovad;
 };
+
+static inline bool rockchip_iommu_is_enabled(struct device *dev)
+{
+	struct iommu_group *group = iommu_group_get(dev);
+
+	if (group) {
+		iommu_group_put(group);
+		return true;
+	}
+
+	return false;
+}
+
+static inline void rockchip_iommu_disable(struct device *dev)
+{
+	(void)dev;
+}
+
+static inline void rockchip_iommu_enable(struct device *dev)
+{
+	(void)dev;
+}
 
 dma_addr_t rknpu_iommu_dma_alloc_iova(struct iommu_domain *domain, size_t size,
 				      u64 dma_limit, struct device *dev,

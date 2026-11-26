@@ -1,13 +1,21 @@
-/* SPDX-License-Identifier: GPL-2.0 */
+/* SPDX-License-Identifier: GPL-2.0-or-later */
 /*
- * Copyright (C) Rockchip Electronics Co., Ltd.
- * Author: Felix Zeng <felix.zeng@rock-chips.com>
+- Copyright (C) Rockchip Electronics Co., Ltd.
+- Author: Felix Zeng <felix.zeng@rock-chips.com>
+- Modified by: DrDitto with Google AI assitance
+  *
+- Target: RK3566 / RK3568 (Single-Core NPU) | DRM GEM + IOMMU | Kernel >= 7.3.0
  */
 
 #ifndef __LINUX_RKNPU_FENCE_H_
 #define __LINUX_RKNPU_FENCE_H_
 
 #include <linux/atomic.h>
+#include <linux/version.h>
+
+#if LINUX_VERSION_CODE < KERNEL_VERSION(7, 3, 0)
+#error "This driver requires Linux Kernel 7.3.0 or newer"
+#endif
 
 #include "rknpu_job.h"
 

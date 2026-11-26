@@ -1,9 +1,10 @@
-/* SPDX-License-Identifier: GPL-2.0 */
+/* SPDX-License-Identifier: GPL-2.0-or-later */
 /*
- * Copyright (C) Rockchip Electronics Co., Ltd.
- * Author: Felix Zeng <felix.zeng@rock-chips.com>
- *
- * Target: RK3566 / RK3568 (single-core NPU, DRM Render Node + IOMMU)
+- Copyright (C) Rockchip Electronics Co., Ltd.
+- Author: Felix Zeng <felix.zeng@rock-chips.com>
+- Modified by: DrDitto with Google AI assitance
+  *
+- Target: RK3566 / RK3568 (Single-Core NPU) | DRM GEM + IOMMU | Kernel >= 7.3.0
  */
 
 #ifndef __LINUX_RKNPU_JOB_H_
@@ -12,10 +13,15 @@
 #include <linux/spinlock.h>
 #include <linux/dma-fence.h>
 #include <linux/irq.h>
+#include <linux/version.h>
 
 #include <drm/drm_device.h>
 
 #include "rknpu_ioctl.h"
+
+#if LINUX_VERSION_CODE < KERNEL_VERSION(7, 3, 0)
+#error "This driver requires Linux Kernel 7.3.0 or newer"
+#endif
 
 #define RKNPU_MAX_CORES 1
 
