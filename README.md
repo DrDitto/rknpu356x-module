@@ -48,7 +48,4 @@ echo 800000000 > /sys/class/devfreq/fde40000.npu/max_freq
 - **Hardened C kernel driver (RK3566/RK3568):**
   - Scatter-gather (`sg_table`) buffer management mapped via IOMMU without depending on CMA for large tensor buffers (up to 4 GB buffer/range bounds, 32-bit IOVA checks for NPU descriptors).
   - Strict `ioctl` boundary validation (`check_add_overflow`, range checks, capability enforcement, no raw kernel pointers exposed to userspace, and single-owner job/fence cleanup).
-- **Safe Rust (`0 unsafe`) userspace runtime:**
-  - Accepts the target `/dev/dri/renderD*` device path as a runtime parameter.
-  - Parses `.rknn` structures/sections using `librknnrt.so` disassembly as a format/protocol reference.
-  - Manages GEM buffer pooling, 64-bit size/offset arithmetic (`checked_add`), safe 32-bit hardware address conversion (`u32::try_from`), and `NONBLOCK` + fence synchronization.
+
