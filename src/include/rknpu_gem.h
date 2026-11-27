@@ -1,21 +1,26 @@
 /* SPDX-License-Identifier: GPL-2.0-or-later */
 /*
-- Copyright (C) Rockchip Electronics Co., Ltd.
-- Author: Felix Zeng <felix.zeng@rock-chips.com>
-- Modified by: DrDitto with Google AI assitance
-  *
-- Target: RK3566 / RK3568 (Single-Core NPU) | DRM GEM + IOMMU | Kernel >= 7.3.0
+ * File: rknpu_gem.h
+ * Copyright (C) Rockchip Electronics Co., Ltd.
+ * Author: Felix Zeng <felix.zeng@rock-chips.com>
+ * Modified by: DrDitto with Google AI assitance
+ *
+ * Target: RK3566 / RK3568 (Single-Core NPU) | DRM GEM + IOMMU | Kernel >= 7.3.0
  */
 
 #ifndef __LINUX_RKNPU_GEM_H
 #define __LINUX_RKNPU_GEM_H
 
+#include <linux/compiler.h>
 #include <linux/mm_types.h>
+#include <linux/overflow.h>
+#include <linux/slab.h>
 #include <linux/version.h>
+
 #include <drm/drm_device.h>
-#include <drm/drm_vma_manager.h>
 #include <drm/drm_gem.h>
 #include <drm/drm_mode.h>
+#include <drm/drm_vma_manager.h>
 
 #if LINUX_VERSION_CODE < KERNEL_VERSION(7, 3, 0)
 #error "This driver requires Linux Kernel 7.3.0 or newer"
@@ -56,25 +61,31 @@ int rknpu_gem_destroy_ioctl(struct drm_device *dev, void *data,
 int rknpu_gem_sync_ioctl(struct drm_device *dev, void *data,
 			 struct drm_file *file_priv);
 
-static inline void rknpu_gem_object_get(struct drm_gem_object *obj)
+static __always_inline void rknpu_gem_object_get(struct drm_gem_object *obj)
 {
-	drm_gem_object_get(obj);
+	if (likely(obj))
+		drm_gem_object_get(obj);
 }
 
-static inline void rknpu_gem_object_put(struct drm_gem_object *obj)
+static __always_inline void rknpu_gem_object_put(struct drm_gem_object *obj)
 {
-	drm_gem_object_put(obj);
+	if (likely(obj))
+		drm_gem_object_put(obj);
 }
 
 static inline struct rknpu_gem_object *
 rknpu_gem_object_find(struct drm_file *filp, unsigned int handle)
 {
-	struct drm_gem_object *obj = drm_gem_object_lookup(filp, handle);
+	struct drm_gem_object *obj;
 
+	if (unlikely(!filp))
+		return NULL;
+
+	obj = drm_gem_object_lookup(filp, handle);
 	if (!obj)
 		return NULL;
 
-	rknpu_gem_object_put(obj);
+	drm_gem_object_put(obj);
 	return to_rknpu_obj(obj);
 }
 
@@ -93,16 +104,21 @@ rknpu_gem_prime_import_sg_table(struct drm_device *dev,
 				struct sg_table *sgt);
 int rknpu_gem_prime_vmap(struct drm_gem_object *obj, struct iosys_map *map);
 void rknpu_gem_prime_vunmap(struct drm_gem_object *obj, struct iosys_map *map);
-int rknpu_gem_prime_mmap(struct drm_object *obj,
-			 struct vm_area_struct *vma);
+int rknpu_gem_prime_mmap(struct drm_gem_object *obj, struct vm_area_struct *vma);
 
-static inline void *rknpu_gem_alloc_page(size_t nr_pages)
+static __always_inline void *rknpu_gem_alloc_page(size_t nr_pages)
 {
-	return kvmalloc_array(nr_pages, sizeof(struct page *),
-			      GFP_KERNEL | __GFP_ZERO);
+	size_t total_bytes;
+
+	if (unlikely(!nr_pages ||
+		     check_mul_overflow(nr_pages, sizeof(struct page *),
+					&total_bytes)))
+		return NULL;
+
+	return kvmalloc(total_bytes, GFP_KERNEL | __GFP_ZERO);
 }
 
-static inline void rknpu_gem_free_page(void *pages)
+static __always_inline void rknpu_gem_free_page(void *pages)
 {
 	kvfree(pages);
 }
