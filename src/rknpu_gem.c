@@ -17,10 +17,12 @@
 #include <linux/compiler.h>
 #include <linux/delay.h>
 #include <linux/dma-buf.h>
+#include <linux/idr.h>
 #include <linux/iommu.h>
 #include <linux/overflow.h>
 #include <linux/pfn.h>
 #include <linux/shmem_fs.h>
+#include <linux/spinlock.h>
 #include <linux/vmalloc.h>
 
 #include "rknpu_drv.h"
@@ -745,16 +747,34 @@ void rknpu_gem_prime_vunmap(struct drm_gem_object *obj, struct iosys_map *map)
 
 int rknpu_gem_prime_mmap(struct drm_gem_object *obj, struct vm_area_struct *vma)
 {
-	int ret;
-
 	if (unlikely(!obj || !vma))
 		return -EINVAL;
 
-	ret = drm_gem_mmap_obj(obj, obj->size, vma);
-	if (unlikely(ret < 0))
-		return ret;
+	return drm_gem_mmap_obj(obj, obj->size, vma);
+}
 
-	return rknpu_gem_mmap_obj(obj, vma);
+static struct rknpu_gem_object *
+rknpu_gem_lookup_by_addr(struct drm_file *file_priv, u64 obj_addr)
+{
+	struct rknpu_gem_object *target = (struct rknpu_gem_object *)(uintptr_t)obj_addr;
+	struct drm_gem_object *obj;
+	struct rknpu_gem_object *found = NULL;
+	int id = 0;
+
+	if (!target)
+		return NULL;
+
+	spin_lock(&file_priv->table_lock);
+	idr_for_each_entry(&file_priv->object_idr, obj, id) {
+		if (obj == &target->base) {
+			drm_gem_object_get(obj);
+			found = target;
+			break;
+		}
+	}
+	spin_unlock(&file_priv->table_lock);
+
+	return found;
 }
 
 int rknpu_gem_sync_ioctl(struct drm_device *dev, void *data,
@@ -765,32 +785,43 @@ int rknpu_gem_sync_ioctl(struct drm_device *dev, void *data,
 	struct rknpu_gem_object *rknpu_obj;
 	struct scatterlist *sg;
 	dma_addr_t sg_dma_addr;
-	unsigned long length, offset, sg_offset, sg_left, size;
+	unsigned long remaining, cur_offset, sg_start, sg_end, sg_offset, size;
 	unsigned long end_offset;
-	unsigned long len = 0;
 	int i;
 
-	if (unlikely(!dev || !dev->dev_private || !args))
+	if (unlikely(!dev || !dev->dev_private || !args || !file_priv))
 		return -EINVAL;
 
 	rknpu_dev = dev->dev_private;
-	rknpu_obj = (struct rknpu_gem_object *)(uintptr_t)args->obj_addr;
-	if (unlikely(!rknpu_obj || !(rknpu_obj->flags & RKNPU_MEM_CACHEABLE)))
+
+	rknpu_obj = rknpu_gem_lookup_by_addr(file_priv, args->obj_addr);
+	if (unlikely(!rknpu_obj))
 		return -EINVAL;
+
+	if (unlikely(!(rknpu_obj->flags & RKNPU_MEM_CACHEABLE))) {
+		drm_gem_object_put(&rknpu_obj->base);
+		return -EINVAL;
+	}
 
 	if (unlikely(check_add_overflow((unsigned long)args->offset,
 					(unsigned long)args->size,
 					&end_offset) ||
-		     end_offset > rknpu_obj->size))
+		     end_offset > rknpu_obj->size)) {
+		drm_gem_object_put(&rknpu_obj->base);
 		return -EINVAL;
+	}
 
 	if (unlikely((rknpu_obj->flags & RKNPU_MEM_NON_CONTIGUOUS) &&
-		     !rknpu_obj->sgt))
+		     !rknpu_obj->sgt)) {
+		drm_gem_object_put(&rknpu_obj->base);
 		return -EINVAL;
+	}
 
 	if (unlikely(rknpu_iommu_domain_get_and_switch(
-			     rknpu_dev, rknpu_obj->iommu_domain_id)))
+			     rknpu_dev, rknpu_obj->iommu_domain_id))) {
+		drm_gem_object_put(&rknpu_obj->base);
 		return -EINVAL;
+	}
 
 	if (!(rknpu_obj->flags & RKNPU_MEM_NON_CONTIGUOUS)) {
 		if (args->flags & RKNPU_MEM_SYNC_TO_DEVICE)
@@ -803,24 +834,27 @@ int rknpu_gem_sync_ioctl(struct drm_device *dev, void *data,
 						      args->offset, args->size,
 						      DMA_FROM_DEVICE);
 	} else {
-		length = args->size;
-		offset = args->offset;
+		remaining = args->size;
+		cur_offset = args->offset;
+		sg_start = 0;
 
 		for_each_sg(rknpu_obj->sgt->sgl, sg, rknpu_obj->sgt->nents, i) {
-			if (length == 0)
+			if (remaining == 0)
 				break;
 
-			if (unlikely(check_add_overflow(len, (unsigned long)sg->length,
-							&len)))
+			if (unlikely(check_add_overflow(sg_start,
+							(unsigned long)sg->length,
+							&sg_end)))
 				break;
 
-			if (len <= offset)
+			if (cur_offset >= sg_end) {
+				sg_start = sg_end;
 				continue;
+			}
 
 			sg_dma_addr = sg_dma_address(sg);
-			sg_left = len - offset;
-			sg_offset = sg->length - sg_left;
-			size = min(length, sg_left);
+			sg_offset = cur_offset - sg_start;
+			size = min(remaining, (unsigned long)sg->length - sg_offset);
 
 			if (args->flags & RKNPU_MEM_SYNC_TO_DEVICE)
 				dma_sync_single_range_for_device(
@@ -832,11 +866,13 @@ int rknpu_gem_sync_ioctl(struct drm_device *dev, void *data,
 					dev->dev, sg_dma_addr, sg_offset, size,
 					DMA_FROM_DEVICE);
 
-			offset += size;
-			length -= size;
+			cur_offset += size;
+			remaining -= size;
+			sg_start = sg_end;
 		}
 	}
 
 	rknpu_iommu_domain_put(rknpu_dev);
+	drm_gem_object_put(&rknpu_obj->base);
 	return 0;
 }
